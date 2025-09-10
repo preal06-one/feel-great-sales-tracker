@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Gap Tracker with AI Suggestions & Monthly Reset</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+
+        :root {
+            --primary-color: #007bff;
+            --secondary-color: #6c757d;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --info-color: #17a2b8;
+            --light-color: #f8f9fa;
+            --dark-color: #343a40;
+            --bg-color: #e9ecef;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--dark-color);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--dark-color);
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--secondary-color);
+            margin-bottom: 15px;
+            font-weight: 400;
+        }
+
+        /* AI SUGGESTIONS STYLES */
+        .ai-suggestions {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ai-suggestions::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% {
+                transform: translateX(-100%) translateY(-100%) rotate(45deg);
+            }
+
+            100% {
+                transform: translateX(100%) translateY(100%) rotate(45deg);
+            }
+        }
+
+        @keyframes slideIn {
+            0% {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .ai-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .ai-icon {
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+        }
+
+        .ai-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .suggestion-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .suggestion-text {
+            font-size: 1rem;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        .suggestion-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .action-tag {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .action-tag:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .urgency-indicator {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-left: 10px;
+        }
+
+        .urgency-low {
+            background: rgba(40, 167, 69, 0.2);
+            color: #155724;
+        }
+
+        .urgency-medium {
+            background: rgba(255, 193, 7, 0.2);
+            color: #856404;
+        }
+
+        .urgency-high {
+            background: rgba(220, 53, 69, 0.2);
+            color: #721c24;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
+
+        .btn-success {
+            background-color: var(--success-color);
+        }
+
+        .btn-success:hover:not(:disabled) {
+            background-color: #1e7e34;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 30px;
+            border-top: 1px solid #eee;
+            padding-top: 30px;
+        }
+
+        .card {
+            background-color: var(--light-color);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .card h3 {
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            color: var(--secondary-color);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .card .value {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--dark-color);
+        }
+
+        #required-average-card .value {
+            color: var(--danger-color);
+        }
+
+        .chart-container {
+            margin-top: 30px;
+            border-top: 1px solid #eee;
+            padding-top: 30px;
+        }
+
+        .chart-container h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: var(--dark-color);
+        }
+
+        .chart-wrapper {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        #salesChart {
+            max-height: 400px;
+        }
+
+        .history {
+            margin-top: 30px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+
+        .history h2 {
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        #sales-history-list {
+            list-style-type: none;
+            max-height: 200px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        #sales-history-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        #sales-history-list li:nth-child(even) {
+            background-color: var(--light-color);
+        }
+
+        #status-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 8px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            transition: background-color 0.3s ease;
+        }
+
+        #status-text {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .status-loading {
+            background-color: #e7f3ff;
+            color: #004085;
+        }
+
+        .status-loading .status-dot {
+            background-color: #007bff;
+            animation: spin 1s linear infinite;
+        }
+
+        .status-success {
+            background-color: #e9f7ef;
+            color: #155724;
+        }
+
+        .status-success .status-dot {
+            background-color: #28a745;
+        }
+
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-error .status-dot {
+            background-color: #dc3545;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Month indicator */
+        .month-indicator {
+            text-align: center;
+            color: var(--secondary-color);
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Sales Gap Tracker- Feel Great</h1>
+        <p class="subtitle">Powered by Google Sheets + AI Suggestions</p>
+        <div class="month-indicator" id="current-month-display"></div>
+
+        <div id="status-indicator">
+            <span class="status-dot"></span>
+            <span id="status-text"></span>
+        </div>
+
+        <!-- AI SUGGESTIONS SECTION -->
+        <div class="ai-suggestions">
+            <div class="ai-header">
+                <div class="ai-icon">🤖</div>
+                <div class="ai-title">AI Sales Booster</div>
+                <span id="urgency-badge" class="urgency-indicator urgency-low">Normal</span>
+            </div>
+            <div class="suggestion-content">
+                <div id="suggestion-text" class="suggestion-text">
+                    Loading AI recommendations...
+                </div>
+                <div id="suggestion-actions" class="suggestion-actions">
+                    <!-- Action tags will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <div class="setup">
+            <div class="input-group">
+                <label for="target-sales">Monthly Sales Target:</label>
+                <input type="number" id="target-sales">
+            </div>
+            <button id="set-target-btn" class="btn btn-primary" disabled>Set Target</button>
+        </div>
+
+        <div class="daily-entry" style="margin-top: 30px;">
+            <div class="input-group">
+                <label for="daily-sales-input">Add Today's Sales:</label>
+                <input type="number" id="daily-sales-input">
+            </div>
+            <button id="add-sales-btn" class="btn btn-success" disabled>Add to Total</button>
+        </div>
+
+        <div class="dashboard">
+            <div class="card">
+                <h3>Target Sales</h3>
+                <p class="value" id="display-target">0</p>
+            </div>
+            <div class="card">
+                <h3>Total Sales</h3>
+                <p class="value" id="total-sales">0</p>
+            </div>
+            <div class="card">
+                <h3>Sales Remaining</h3>
+                <p class="value" id="remaining-sales">0</p>
+            </div>
+            <div class="card">
+                <h3>Days Remaining</h3>
+                <p class="value" id="days-remaining">0</p>
+            </div>
+            <div class="card" id="required-average-card" style="grid-column: 1 / -1;">
+                <h3>Required Daily Sales</h3>
+                <p class="value" id="required-average">0.00</p>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h2>Sales Performance Chart</h2>
+            <div class="chart-wrapper">
+                <canvas id="salesChart"></canvas>
+            </div>
+        </div>
+
+        <div class="history">
+            <h2>Sales History (Current Month)</h2>
+            <ul id="sales-history-list"></ul>
+        </div>
+    </div>
+
+    <script>
+        // Replace this with your Google Apps Script web app URL
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwJ9OQCKMTEm2u4wRdPxgU5ZDcmMZfsZI7yiHyqhpwYxeNhkMBKW1ClEc7skAEIP2rN/exec';
+
+        let salesChart = null;
+        let salesData = { target: 0, history: [] };
+
+        // AI SUGGESTIONS DATABASE
+        const aiSuggestions = {
+            ahead_of_target: [
+                {
+                    text: "🎉 Great job! You're ahead of target. Consider investing in customer retention programs or expanding to new markets.",
+                    actions: ["Customer surveys", "Referral program", "Upsell existing customers"],
+                    urgency: "low"
+                },
+                {
+                    text: "🚀 Excellent performance! Use this momentum to test new product lines or premium services.",
+                    actions: ["New product launch", "Premium packages", "Market expansion"],
+                    urgency: "low"
+                }
+            ],
+            on_track: [
+                {
+                    text: "✅ You're on track! Maintain consistency with your current strategies and optimize conversion rates.",
+                    actions: ["A/B test ads", "Optimize website", "Follow up leads"],
+                    urgency: "low"
+                },
+                {
+                    text: "💪 Steady progress! Focus on customer experience and repeat business to maintain momentum.",
+                    actions: ["Customer feedback", "Loyalty program", "Process improvement"],
+                    urgency: "low"
+                }
+            ],
+            slightly_behind: [
+                {
+                    text: "⚡ Boost your Facebook and Instagram presence with engaging content and targeted ads.",
+                    actions: ["FB page boost", "Instagram stories", "Social media ads", "Content calendar"],
+                    urgency: "medium"
+                },
+                {
+                    text: "📞 Activate your sales network! Call warm leads and follow up on pending proposals.",
+                    actions: ["Call warm leads", "Follow up emails", "Sales pipeline review"],
+                    urgency: "medium"
+                },
+                {
+                    text: "🎯 Run a limited-time promotion or flash sale to create urgency and drive immediate sales.",
+                    actions: ["Flash sale", "Discount codes", "Limited offers", "Email blast"],
+                    urgency: "medium"
+                }
+            ],
+            behind: [
+                {
+                    text: "🔥 Time for aggressive action! Launch multi-channel campaigns and activate all sales channels.",
+                    actions: ["Multi-platform ads", "Cold calling", "Partnerships", "Influencer outreach"],
+                    urgency: "high"
+                },
+                {
+                    text: "⚠️ Consider special promotions, bundle deals, and reach out to past customers immediately.",
+                    actions: ["Bundle deals", "Past customer outreach", "Referral incentives", "Price adjustments"],
+                    urgency: "high"
+                },
+                {
+                    text: "🎪 Host a virtual event, webinar, or live demo to showcase your products and generate leads.",
+                    actions: ["Virtual event", "Live demo", "Webinar", "Community engagement"],
+                    urgency: "high"
+                }
+            ],
+            critical: [
+                {
+                    text: "🚨 URGENT: Maximum effort needed! Activate emergency sales protocols and all available resources.",
+                    actions: ["Emergency pricing", "All-hands sales", "Partner activation", "Direct outreach"],
+                    urgency: "high"
+                },
+                {
+                    text: "⏰ Critical time! Focus on high-value deals, enterprise clients, and immediate conversion opportunities.",
+                    actions: ["Enterprise deals", "High-value prospects", "Immediate closures", "Team mobilization"],
+                    urgency: "high"
+                }
+            ]
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const statusIndicator = document.getElementById('status-indicator');
+            const statusText = document.getElementById('status-text');
+            const targetSalesInput = document.getElementById('target-sales');
+            const setTargetBtn = document.getElementById('set-target-btn');
+            const dailySalesInput = document.getElementById('daily-sales-input');
+            const addSalesBtn = document.getElementById('add-sales-btn');
+            const displayTargetEl = document.getElementById('display-target');
+            const totalSalesEl = document.getElementById('total-sales');
+            const remainingSalesEl = document.getElementById('remaining-sales');
+            const daysRemainingEl = document.getElementById('days-remaining');
+            const requiredAverageEl = document.getElementById('required-average');
+            const salesHistoryListEl = document.getElementById('sales-history-list');
+            const currentMonthDisplay = document.getElementById('current-month-display');
+
+            function setStatus(state, message) {
+                statusIndicator.className = '';
+                statusIndicator.classList.add(`status-${state}`);
+                statusText.textContent = message;
+            }
+
+            function updateMonthDisplay() {
+                const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                    'July', 'August', 'September', 'October', 'November', 'December'];
+                const today = new Date();
+                const currentMonth = monthNames[today.getMonth()];
+                const currentYear = today.getFullYear();
+                currentMonthDisplay.textContent = `${currentMonth} ${currentYear} Sales Tracking`;
+            }
+
+            function checkAndHandleNewMonth() {
+                const today = new Date();
+                const currentMonth = today.getMonth();
+                const currentYear = today.getFullYear();
+
+                const lastRecordedDate = localStorage.getItem('lastRecordedMonth');
+                const currentMonthKey = `${currentYear}-${currentMonth}`;
+
+                if (lastRecordedDate && lastRecordedDate !== currentMonthKey) {
+                    showNewMonthMessage();
+                }
+
+                localStorage.setItem('lastRecordedMonth', currentMonthKey);
+            }
+
+            function showNewMonthMessage() {
+                const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                    'July', 'August', 'September', 'October', 'November', 'December'];
+                const currentMonth = monthNames[new Date().getMonth()];
+
+                const welcomeDiv = document.createElement('div');
+                welcomeDiv.innerHTML = `
+                    <div style="background: linear-gradient(135deg, #4CAF50, #45a049); 
+                                color: white; 
+                                padding: 20px; 
+                                border-radius: 12px; 
+                                margin-bottom: 20px; 
+                                text-align: center;
+                                animation: slideIn 0.5s ease-out;">
+                        <h3>🎉 Welcome to ${currentMonth}!</h3>
+                        <p>Ready for a fresh start? Your previous month's data is preserved, and you can set new targets!</p>
+                        <button onclick="this.parentElement.parentElement.remove()" 
+                                style="background: rgba(255,255,255,0.2); 
+                                       border: 1px solid white; 
+                                       color: white; 
+                                       padding: 8px 16px; 
+                                       border-radius: 20px; 
+                                       cursor: pointer; 
+                                       margin-top: 10px;">
+                            Got it!
+                        </button>
+                    </div>
+                `;
+
+                document.querySelector('.container').insertBefore(welcomeDiv, document.querySelector('.ai-suggestions'));
+            }
+
+            function getCurrentMonthSales() {
+                const today = new Date();
+                const currentMonth = today.getMonth();
+                const currentYear = today.getFullYear();
+
+                return salesData.history.filter(entry => {
+                    const saleDate = new Date(entry.date);
+                    return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear;
+                });
+            }
+
+            function updateAISuggestions() {
+                const today = new Date();
+                const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                const daysRemaining = Math.max(0, lastDayOfMonth.getDate() - today.getDate() + 1);
+                const currentMonthSales = getCurrentMonthSales();
+                const totalSales = currentMonthSales.reduce((sum, entry) => sum + Number(entry.sales), 0);
+                const progressPercentage = salesData.target > 0 ? (totalSales / salesData.target) * 100 : 0;
+
+                const daysInMonth = lastDayOfMonth.getDate();
+                const daysPassed = daysInMonth - daysRemaining;
+                const expectedProgressPercentage = (daysPassed / daysInMonth) * 100;
+
+                let category, suggestions;
+
+                if (progressPercentage >= expectedProgressPercentage + 10) {
+                    category = 'ahead_of_target';
+                } else if (progressPercentage >= expectedProgressPercentage - 5) {
+                    category = 'on_track';
+                } else if (progressPercentage >= expectedProgressPercentage - 15) {
+                    category = 'slightly_behind';
+                } else if (progressPercentage >= expectedProgressPercentage - 30) {
+                    category = 'behind';
+                } else {
+                    category = 'critical';
+                }
+
+                suggestions = aiSuggestions[category];
+                const suggestionIndex = (today.getDate() - 1) % suggestions.length;
+                const selectedSuggestion = suggestions[suggestionIndex];
+
+                document.getElementById('suggestion-text').textContent = selectedSuggestion.text;
+
+                const urgencyBadge = document.getElementById('urgency-badge');
+                urgencyBadge.className = `urgency-indicator urgency-${selectedSuggestion.urgency}`;
+                urgencyBadge.textContent = selectedSuggestion.urgency.charAt(0).toUpperCase() + selectedSuggestion.urgency.slice(1);
+
+                const actionsContainer = document.getElementById('suggestion-actions');
+                actionsContainer.innerHTML = '';
+                selectedSuggestion.actions.forEach(action => {
+                    const tag = document.createElement('span');
+                    tag.className = 'action-tag';
+                    tag.textContent = action;
+                    tag.onclick = () => {
+                        alert(`Great choice! "${action}" is a proven strategy. Consider implementing this today!`);
+                    };
+                    actionsContainer.appendChild(tag);
+                });
+            }
+
+            function updateChart() {
+                const ctx = document.getElementById('salesChart').getContext('2d');
+
+                if (salesChart) {
+                    salesChart.destroy();
+                }
+
+                const currentMonthSales = getCurrentMonthSales();
+
+                if (!currentMonthSales || currentMonthSales.length === 0) {
+                    ctx.font = '16px Poppins';
+                    ctx.fillStyle = '#6c757d';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('No sales data available for this month', ctx.canvas.width / 2, ctx.canvas.height / 2);
+                    return;
+                }
+
+                const sortedHistory = [...currentMonthSales].sort((a, b) => new Date(a.date) - new Date(b.date));
+                const labels = sortedHistory.map(entry => {
+                    const date = new Date(entry.date);
+                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                });
+                const salesValues = sortedHistory.map(entry => Number(entry.sales));
+
+                const cumulativeSales = [];
+                let sum = 0;
+                salesValues.forEach(value => {
+                    sum += value;
+                    cumulativeSales.push(sum);
+                });
+
+                salesChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Daily Sales',
+                            data: salesValues,
+                            borderColor: '#007bff',
+                            backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4
+                        }, {
+                            label: 'Cumulative Sales',
+                            data: cumulativeSales,
+                            borderColor: '#28a745',
+                            backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Daily vs Cumulative Sales (Current Month)',
+                                font: {
+                                    size: 16,
+                                    family: 'Poppins',
+                                    weight: '600'
+                                }
+                            },
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Sales Amount'
+                                },
+                                ticks: {
+                                    callback: function (value) {
+                                        return value.toLocaleString();
+                                    }
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Date'
+                                }
+                            }
+                        },
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
+                        }
+                    }
+                });
+            }
+
+            async function fetchDataFromServer() {
+                setStatus('loading', 'Connecting to database...');
+                setTargetBtn.disabled = true;
+                addSalesBtn.disabled = true;
+
+                try {
+                    const response = await fetch(SCRIPT_URL);
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+                    const data = await response.json();
+                    if (data.status === 'error') throw new Error(data.message);
+
+                    salesData = data;
+
+                    checkAndHandleNewMonth();
+                    updateMonthDisplay();
+                    updateDashboard();
+                    updateChart();
+                    updateAISuggestions();
+
+                    const lastUpdated = new Date().toLocaleTimeString();
+                    setStatus('success', `Connected (Last update: ${lastUpdated})`);
+
+                } catch (error) {
+                    setStatus('error', 'Connection error. Check your internet.');
+                    console.error('Fetch Error:', error);
+                } finally {
+                    setTargetBtn.disabled = false;
+                    addSalesBtn.disabled = false;
+                }
+            }
+
+            async function postDataToServer(action, value) {
+                setStatus('loading', 'Saving data...');
+                setTargetBtn.disabled = true;
+                addSalesBtn.disabled = true;
+
+                try {
+                    const response = await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action, value })
+                    });
+
+                    setTimeout(fetchDataFromServer, 2500);
+
+                } catch (error) {
+                    setStatus('error', 'Save error. Please try again.');
+                    console.error('Post Error:', error);
+                    setTargetBtn.disabled = false;
+                    addSalesBtn.disabled = false;
+                }
+            }
+
+            function updateDashboard() {
+                const today = new Date();
+                const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                const daysRemaining = Math.max(0, lastDayOfMonth.getDate() - today.getDate() + 1);
+                const currentMonthSales = getCurrentMonthSales();
+                const totalSales = currentMonthSales.reduce((sum, entry) => sum + Number(entry.sales), 0);
+                const remainingSales = Math.max(0, salesData.target - totalSales);
+                const requiredAverage = daysRemaining > 0 ? (remainingSales / daysRemaining) : 0;
+
+                displayTargetEl.textContent = Number(salesData.target).toLocaleString();
+                targetSalesInput.value = salesData.target;
+                totalSalesEl.textContent = totalSales.toLocaleString();
+                remainingSalesEl.textContent = remainingSales.toLocaleString();
+                daysRemainingEl.textContent = daysRemaining;
+                requiredAverageEl.textContent = requiredAverage.toFixed(2);
+                renderHistory();
+            }
+
+            function renderHistory() {
+                const currentMonthSales = getCurrentMonthSales();
+
+                salesHistoryListEl.innerHTML = '';
+                if (!currentMonthSales || currentMonthSales.length === 0) {
+                    salesHistoryListEl.innerHTML = '<li>No sales entries yet for this month.</li>';
+                    return;
+                }
+
+                [...currentMonthSales].reverse().forEach(entry => {
+                    const li = document.createElement('li');
+                    const date = new Date(entry.date).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                    });
+                    li.innerHTML = `<span>${date}</span> <strong>+ ${Number(entry.sales).toLocaleString()}</strong>`;
+                    salesHistoryListEl.appendChild(li);
+                });
+            }
+
+            setTargetBtn.addEventListener('click', () => {
+                const newTarget = parseInt(targetSalesInput.value, 10);
+                if (!isNaN(newTarget) && newTarget >= 0) {
+                    postDataToServer('setTarget', newTarget);
+                } else {
+                    alert('Please enter a valid number for the target.');
+                }
+            });
+
+            addSalesBtn.addEventListener('click', () => {
+                const newSales = parseInt(dailySalesInput.value, 10);
+                if (!isNaN(newSales) && newSales > 0) {
+                    postDataToServer('addSale', newSales);
+                    dailySalesInput.value = '';
+                } else {
+                    alert('Please enter a valid number for sales.');
+                }
+            });
+
+            fetchDataFromServer();
+        });
+    </script>
+</body>
+
+</html>
